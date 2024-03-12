@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Esercizio 2 :)</title>
+        <script>
+            window.onload = function(){
+                var today = new Date();
+                var dd = String(today.getDate()).padStart(2, '0');
+                var mm = String(today.getMonth() + 1).padStart(2, '0'); //January is 0!
+                var yyyy = today.getFullYear();
+
+                today = yyyy + '-' + mm + '-' + dd;
+                document.getElementById("nascita").setAttribute("max", today);
+            }
+        </script>
+    </head>
+    <body>
+        <script>
+            function checkStudent(){
+                var studenteLavoratore = document.getElementById("studenteLavoratore").value;
+                var descrizioneLavoro = document.getElementById("descrizione");
+                if(studenteLavoratore === "si")
+                    descrizioneLavoro.required = true;
+                else 
+                    descrizioneLavoro.required = false;
+            }
+        </script>
+        <form>
+            <label for="cognomeNome">Cognome e Nome:</label><br>
+            <input type="text" id="cognomeNome" name="cognomeNome" maxlength="50" pattern="[A-Za-z\s]+" title="MA CHE MINCHIA METTI NUMERI SUL NOME IDIOTA" required><br> 
+            <br>
+            <label for="nascita">Data di nascita:</label><br>
+            <input type="date" id="nascita" name="nascita" ><br>
+            <br>
+            <label for="cap">CAP:</label><br>
+            <input type="text" id="cap" name="cap" pattern="\d{5}" title="Inserisci un CAP di 5 cifre" required><br>
+            <br>
+            <label for="studenteLavoratore">Studente Lavoratore?</label><br>
+            <select type="checkbox" id="studenteLavoratore" name="studenteLavoratore" onchange="checkStudent()">
+                <option value = "no">No</option>
+                <option value = "si">Si</option>
+            </select><br>
+            <br>
+            <label for="foto">Carica una foto:</label><br>
+            <input type="file" id="foto" name="foto" accept="image/*"><br>
+            <br>
+            <label for="descrizione">Descrizione del lavoro svolto:</label><br>
+            <input type="text" id="descrizione" name="descrizione" maxlength="80" required><br> 
+            <br>
+            <label for="CF">Codice Fiscale:</label><br>
+            <input type="text" id="CF" name="CF" maxlength="16" pattern="[A-Z\s]{6}[A-Z0-9\s]{10}"><br>
+            <br>
+            
+            <label for="telefono">Telefono:</label><br>
+            <input type="text" id="telefono" name="telefono" pattern="\+\d{2}-\d{3}-\d{7}" title="Numero di telefono errato"><br>
+            <br>
+            <label for="set">Set di foto:</label><br>
+            <input type="file" id="set" name="set" accept="image/*" multiple><br>
+            <br>
+            <label for="web">Pagina Web Personale:</label><br>
+            <input type="url" id="web" name="web" maxlength="50"><br>
+            <br>
+            
+
+            <input type="submit" value="Invio">
+            <input type="reset">
+
+
+        </form>
+    </body>
+</html>
