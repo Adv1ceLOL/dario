@@ -1,17 +1,17 @@
 FROM gcc:latest as builder
-COPY src /usr/src
-WORKDIR /usr/src
-RUN gcc -o main -static main.c
+COPY . /usr/src/myapp
+WORKDIR /usr/src/myapp
+RUN gcc -o client -static client.c
 
 FROM alpine:latest as runtime
-COPY --from=builder /usr/src/main /main
-CMD ["./main"]
+COPY --from=builder /usr/src/myapp/client /client
+ENTRYPOINT ["./client"]
 
 # FROM gcc:4.9 as builder
 
 # WORKDIR /home/dev
-# COPY src/ src/
-# RUN gcc -o hello-world src/main.c
+# COPY b_client.c b_client.c
+# RUN gcc -o b_client b_client.c
 
 # FROM alpine:latest
 
@@ -59,5 +59,5 @@ CMD ["./main"]
 #         "$ALPINE_GLIBC_I18N_PACKAGE_FILENAME"
         
 # WORKDIR /usr/project
-# COPY --from=builder /home/dev/hello-world .
-# CMD ["./hello-world"]
+# COPY --from=builder /home/dev/b_client .
+# CMD ["./b_client"]
