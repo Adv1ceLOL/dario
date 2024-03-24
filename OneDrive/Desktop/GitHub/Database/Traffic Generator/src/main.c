@@ -7,9 +7,15 @@
 #include <stdlib.h>
 #include <netinet/in.h>
 #include <stdbool.h>
+#include <unistd.h>
+
+#define PORT 8081
+#define MAX_PACKETS 10
 
 typedef struct Payload {
     int value;
+    char* originator; //Per ricordare l'originator
+    int sequenceNumber;
 } Payload;
 
 typedef struct Message {
@@ -55,12 +61,31 @@ typedef struct Broadcaster {
     BroadcasterHandler handler;
 } Broadcaster;
 
+
+
+void initializeBroadcaster(Broadcaster* broadcaster, int port) {
+
+    // Create socket
+    broadcaster->socket = socket(AF_INET, SOCK_DGRAM, 0);
+    if (broadcaster->socket == -1) {
+        perror("socket");
+        exit(1);
+    }
+
+    // Enable broadcast
+    int broadcastEnable = 1;
+    int ret = setsockopt(broadcaster->socket, SOL_SOCKET, SO_BROADCAST, &broadcastEnable, sizeof(broadcastEnable));
+    if (ret) {
+        perror("setsockopt");
+        exit(1);
+    }
+}
+
 void register_handler(Broadcaster * broadcaster, BroadcasterHandler handler) {
     broadcaster->handler = handler;
 }
 
 void sendUDP(Broadcaster * broadcaster, Payload * payload) {
-    // Send UDP packet and update local sequence
     //!Creo il pacchetto
     char packet[sizeof(Payload)];
     memcpy(packet, payload, sizeof(payload));
@@ -79,20 +104,64 @@ typedef struct PacketNode {
     struct PacketNode *next;
 } PacketNode;
 
+
 PacketNode *seenPackets = NULL;
 
 bool hasSeenPacket(char *packet, int packetSize) {
     PacketNode *current = seenPackets;
     while (current != NULL) {
         if (memcmp(current->packet, packet, packetSize) == 0) {
-            // The packet has been seen before
+
             return true;
         }
         current = current->next;
     }
 
-    // The packet has not been seen before
     return false;
+}
+
+Payload receivedPackets[10];
+
+void markPacketAsReceived(char* originator, int sequenceNumber) {
+    for (int i = 0; i < 10; i++) {
+        if (receivedPackets[i].originator == NULL) {
+            receivedPackets[i].originator = strdup(originator);
+            receivedPackets[i].sequenceNumber = sequenceNumber;
+            break;
+        }
+    }
+}
+
+void broadcastPacket(Broadcaster* broadcaster, Payload* packet) {
+    struct ifaddrs *ifaddr, *ifa;
+
+    if (getifaddrs(&ifaddr) == -1) {
+        perror("getifaddrs");
+        return;
+    }
+
+    for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+        if (ifa->ifa_addr == NULL || ifa->ifa_addr->sa_family != AF_INET)
+            continue;
+
+        if (setsockopt(broadcaster->socket, SOL_SOCKET, SO_BINDTODEVICE, ifa->ifa_name, strlen(ifa->ifa_name)) == -1) {
+            perror("setsockopt");
+            continue;
+        }
+
+        // Send Pacchetto
+        struct sockaddr_in broadcastAddr;
+        memset(&broadcastAddr, 0, sizeof(broadcastAddr));
+        broadcastAddr.sin_family = AF_INET;
+        broadcastAddr.sin_port = htons(PORT);
+        broadcastAddr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
+
+        if (sendto(broadcaster->socket, packet, sizeof(Payload), 0, (struct sockaddr*)&broadcastAddr, sizeof(broadcastAddr)) == -1) {
+            perror("sendto");
+        }
+    }
+
+    freeifaddrs(ifaddr);
 }
 
 void process_broadcaster(Broadcaster * broadcaster) {
@@ -178,25 +247,36 @@ int msleep(long msec)
     return res;
 }
 
+void cleanupBroadcaster(Broadcaster* broadcaster) {
+    // Close the socket
+    if (broadcaster->socket != -1) {
+        close(broadcaster->socket);
+    }
+}
+
 
 int main() {
 
-    // Autoflush stdout for docker
     setvbuf(stdout, NULL, _IONBF, 0);
 
+    // Inizializzo Broadcaster
+    Broadcaster broadcaster;
+    initializeBroadcaster(&broadcaster, PORT);
+
     // Traffic generator
-    Broadcaster* broadcast;
     time_t start_time = time(NULL);
     while (time(NULL) - start_time < 20) {
         Payload packet;
-        prepare_message(&packet); // Generate a new packet
-        sendUDP(&broadcast,&packet); // Send the packet
-        msleep(1000); // Wait for a while before sending the next packet
+        sendUDP(&broadcaster,&packet); 
+        broadcastPacket(&broadcaster, &packet); 
+        markPacketAsReceived(packet.originator, packet.sequenceNumber);
+        msleep(1000); 
     }
 
-    // Broadcaster
-
     // Traffic analyzer
+
+    //Cleanup
+    cleanupBroadcaster(&broadcaster);
 
 }
 
